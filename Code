@@ -1,0 +1,118 @@
+#include <Servo.h>
+
+// Define flame sensor pins
+const int FLAME_LEFT = A0;
+const int FLAME_CENTER = A1;
+const int FLAME_RIGHT = A2;
+
+// Define motor pins (L298N)
+const int IN1 = 9;   // Left Motor +
+const int IN2 = 8;   // Left Motor -
+const int IN3 = 7;   // Right Motor +
+const int IN4 = 6;   // Right Motor -
+
+// Pump and Servo
+const int PUMP_PIN = 5;
+const int SERVO_PIN = 10;
+
+Servo sprayer;
+
+void setup() {
+  Serial.begin(9600);
+
+  // Set sensor pins
+  pinMode(FLAME_LEFT, INPUT);
+  pinMode(FLAME_CENTER, INPUT);
+  pinMode(FLAME_RIGHT, INPUT);
+
+  // Set motor pins
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  // Set pump pin
+  pinMode(PUMP_PIN, OUTPUT);
+
+  // Initialize servo
+  sprayer.attach(SERVO_PIN);
+  sprayer.write(90);  // center
+}
+
+void loop() {
+  int left = analogRead(FLAME_LEFT);
+  int center = analogRead(FLAME_CENTER);
+  int right = analogRead(FLAME_RIGHT);
+
+  Serial.print("L:"); Serial.print(left);
+  Serial.print(" C:"); Serial.print(center);
+  Serial.print(" R:"); Serial.println(right);
+
+  int threshold = 400;
+
+  if (center < threshold) {
+    moveForward();
+    if (center < 200) {
+      stopMotors();
+      extinguishFire();
+    }
+  }
+  else if (left < threshold) {
+    turnLeft();
+  }
+  else if (right < threshold) {
+    turnRight();
+  }
+  else {
+    stopMotors();
+  }
+
+  delay(100);
+}
+
+// Movement functions
+void moveForward() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void turnLeft() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void turnRight() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void stopMotors() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+void extinguishFire() {
+  Serial.println("🔥 Fire detected! Spraying water...");
+  digitalWrite(PUMP_PIN, HIGH);
+  
+  // Sweep sprayer left to right
+  for (int pos = 60; pos <= 120; pos++) {
+    sprayer.write(pos);
+    delay(10);
+  }
+  for (int pos = 120; pos >= 60; pos--) {
+    sprayer.write(pos);
+    delay(10);
+  }
+
+  digitalWrite(PUMP_PIN, LOW);
+  sprayer.write(90); // reset center
+}
